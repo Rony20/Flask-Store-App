@@ -8,6 +8,7 @@ from db import db
 from resources.item import blp as item_blue_print
 from resources.store import blp as store_blue_print
 from resources.tag import blp as tag_blue_print
+from resources.user import blp as user_blue_print
 
 # Run the following command to set docker volume on particular image
 # docker run -dp 8000:5000 -w /app -v "$(pwd):/app" flask-smorest-api
@@ -40,5 +41,6 @@ def create_app(db_url=None):
     api.register_blueprint(store_blue_print)
     api.register_blueprint(item_blue_print)
     api.register_blueprint(tag_blue_print)
+    api.register_blueprint(user_blue_print)
 
     return app
