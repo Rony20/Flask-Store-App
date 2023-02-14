@@ -4,7 +4,9 @@ from flask_smorest import Api
 from flask_jwt_extended import JWTManager
 
 import models
+
 from db import db
+from models import BlockListModel
 from resources.item import blp as item_blue_print
 from resources.store import blp as store_blue_print
 from resources.tag import blp as tag_blue_print
@@ -33,6 +35,16 @@ def create_app(db_url=None):
 
     app.config["JWT_SECRET_KEY"] = "43427464583166506109419722629133463570009142403819322148911687990523731930688"
     jwt = JWTManager(app)
+
+    @jwt.token_in_blocklist_loader
+    def check_if_token_in_blocklist(jwt_header, jwt_payload):
+        if BlockListModel.query.filter(BlockListModel.token == jwt_payload["jti"]).first():
+            return True
+        return False
+
+    @jwt.revoked_token_loader
+    def revoked_token_callback(jwt_header, jwt_payload):
+        return jsonify({"description": "The token has been revoked.", "error": "token_revoked"}), 401
 
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
