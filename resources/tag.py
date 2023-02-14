@@ -3,10 +3,10 @@ from flask_smorest import abort, Blueprint
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from db import db
-from models import TagModel, StoreModel
-from schemas import TagSchema
+from models import ItemModel, StoreModel, TagModel
+from schemas import TagSchema, TagAndItemSchema
 
-blp = Blueprint("tags", __name__, "Operations tags")
+blp = Blueprint("Tags", __name__, "Operations tags")
 
 
 @blp.route("/store/<string:store_id>/tag")
@@ -35,12 +35,61 @@ class TagInStore(MethodView):
         return tag
 
 
+@blp.route("/item/<int:item_id>/tag/<int:tag_id>")
+class LinkTagToItem(MethodView):
+    @blp.response(201, TagSchema)
+    def post(self, item_id, tag_id):
+        item = ItemModel.query.get_or_404(item_id)
+        tag = TagModel.query.get_or_404(tag_id)
+
+        item.tags.append(tag)
+
+        try:
+            db.session.add(item)
+            db.session.commit()
+        except SQLAlchemyError:
+            abort(500, message="An error occurred while linking an item with tag.")
+
+        return tag
+
+    @blp.response(200, TagAndItemSchema)
+    def delete(self, item_id, tag_id):
+        item = ItemModel.query.get_or_404(item_id)
+        tag = TagModel.query.get_or_404(tag_id)
+
+        item.tags.remove(tag)
+
+        try:
+            db.session.add(item)
+            db.session.commit()
+        except SQLAlchemyError:
+            abort(500, message="An error occurred while unlinking an item from tag.")
+
+        return {"message": "Item removed from tag", "item": item, "tag": tag}
+
+
 @blp.route("/tag/<int:tag_id>")
 class Tag(MethodView):
     @blp.response(200, TagSchema)
     def get(self, tag_id):
         tag = TagModel.query.get_or_404(tag_id)
         return tag
+
+    @blp.response(
+        202,
+        description="Delete a tag if no message is tagged with it.",
+        example={"message": "Tag deleted"})
+    @blp.alt_response(404, description="Tag not found")
+    @blp.alt_response(
+        400,
+        description="Returned if the tag is assigned to one or more items. In this case the tag is not deleted")
+    def delete(self, tag_id):
+        tag = TagModel.query.get_or_404(tag_id)
+        if not tag.items:
+            db.session.delete(tag)
+            db.session.commit()
+            return {"message": "Tag deleted"}
+        abort(400, message="Could not delete tag. Make sure tag is not associated with any items, then try again")
 
 
 @blp.route("/tag")
