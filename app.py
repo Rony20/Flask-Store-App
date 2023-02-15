@@ -1,7 +1,8 @@
 import os
 from flask import Flask, jsonify
-from flask_smorest import Api
 from flask_jwt_extended import JWTManager
+from flask_smorest import Api
+from flask_migrate import Migrate
 
 import models
 
@@ -30,6 +31,7 @@ def create_app(db_url=None):
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     db.init_app(app)
+    migrate = Migrate(app, db)
 
     api = Api(app)
 
@@ -60,8 +62,8 @@ def create_app(db_url=None):
             jsonify({"message": "Request does not contain an access token.", "error": "authorization_required"}), 401)
 
     # TODO: Check app_context method
-    with app.app_context():
-        db.create_all()
+    # with app.app_context():
+    #     db.create_all()
 
     api.register_blueprint(store_blue_print)
     api.register_blueprint(item_blue_print)
